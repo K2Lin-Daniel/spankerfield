@@ -66,7 +66,7 @@ namespace big
 		constexpr int SIMULATION_STEPS = 16;
 		constexpr float TIME_MULTIPLIER = 0.69f;
 
-		float delta_time = (predTime * TIME_MULTIPLIER / 100.0f) / SIMULATION_STEPS;
+		float delta_time = (predTime * TIME_MULTIPLIER) / SIMULATION_STEPS;
 		for (int i = 0; i < 16; ++i)
 		{
 			PredictLinearMove(pred_lin_vel, delta_time, pred_displacement, &pred_displacement);
@@ -81,7 +81,11 @@ namespace big
 
 	float AimbotPredictor::ComputeMissileFinalVelocity(float initSpd, float maxSpd, float accel, float engIgnTime, float dist, float* travelTime)
 	{
-		if ((accel == 0.0f) || (maxSpd < initSpd)) return 0.0f;
+		if ((accel == 0.0f) || (maxSpd < initSpd))
+		{
+			if (travelTime) *travelTime = (initSpd > 0) ? dist / initSpd : 0.0f;
+			return initSpd;
+		}
 
 		auto before_ignition_distance = initSpd * engIgnTime;
 		auto acceleration_time = (maxSpd - initSpd) / accel;
@@ -244,7 +248,7 @@ namespace big
 
 						// Calculate final velocity again for new target position 
 						initial_speed.z = ComputeMissileFinalVelocity(initial_speed.z, max_speed, acceleration, ignition_time, distance, &travel_time);
-						gravity = missile_data->m_Gravity > 0.f ? 0.0f : missile_data->m_Gravity;
+						gravity = missile_data->m_Gravity;
 					}
 				}
 			}
@@ -771,7 +775,7 @@ namespace plugins
 		if (!perform_aim || !g_settings.aimbot_snap_to_target)
 			return;
 
-		// Handle vehicle aiming
+		// Handle vehicle aiming or non-standard weapons (no aim assist)
 		if (!aim_assist)
 		{
 			mouse_aim(target);
@@ -910,8 +914,8 @@ namespace plugins
 					const auto render_view = game_renderer->m_pRenderView;
 					if (!render_view) return;
 
-					// Only perform prediction, no aiming for non-standard weapons
-					perform_prediction_and_aim(local_soldier, prediction_target, target, render_view->m_ViewInverse, delta_time, false);
+					// Perform prediction and aiming for non-standard weapons
+					perform_prediction_and_aim(local_soldier, prediction_target, target, render_view->m_ViewInverse, delta_time, true);
 				}
 
 				return;
